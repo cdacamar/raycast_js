@@ -77,6 +77,7 @@ var World = {
 
 var Texture = function() {
   this.Pixels = [];
+  this.ImageBitmap = undefined;
 
   this.Pixels[World.Textures.Metrics.Height * World.Textures.Metrics.Width - 1] = undefined;
 };
@@ -87,14 +88,14 @@ var Sprite = function(x, y, tex) {
   this.texture = tex;
 };
 
-var Color = function(colorRGBA) {
-  this.setFromRGBA(colorRGBA);
+var Color = function(colorABGR) {
+  this.setFromABGR(colorABGR);
 };
-Color.prototype.setFromRGBA = function(colorRGBA) {
-  this.r = (colorRGBA >>> 24); // we need to shift this as a signed num
-  this.g = ((colorRGBA >> 16) & 0x00FF);
-  this.b = ((colorRGBA >> 8) & 0x0000FF);
-  this.a = (colorRGBA & 0x000000FF);
+Color.prototype.setFromABGR = function(colorABGR) {
+  this.a = (colorABGR >>> 24); // we need to shift this as a signed num
+  this.b = ((colorABGR >> 16) & 0x00FF);
+  this.g = ((colorABGR >> 8) & 0x0000FF);
+  this.r = (colorABGR & 0x000000FF);
 };
 Color.prototype.toRGBA = function() {
   return (this.r << 24) | (this.g << 16) | (this.b << 8) | (this.a);
@@ -162,7 +163,8 @@ var Game = function() {
     // special keys
     T: 84,
     Z: 90,
-    X: 88
+    X: 88,
+  C: 67
   };
 
   // logic
@@ -172,31 +174,39 @@ var Game = function() {
   var player       = new Player();
   var drawSprites  = true;
   var drawGeometry = true;
+  var useHWAccel   = false;
   var showFPS      = true;
 
   return {
 
 // Game functions
-dataArrayToColorArray: function(data, width, height) {
-  var result = [];
-  result[width * height - 1] = undefined;
-  for (var y = 0;y < height;++y) {
-    for (var x = 0;x < width;++x) {
-      var index = (y * height + x) * 4;
-      result[y * height + x] = /* r = */ (data[index] << 24) | /* g = */ (data[index + 1] << 16) | /* b = */ (data[index + 2] << 8) | /* a = */ (data[index + 3]);
+imgToTexture: function(img, ctx, maskBlack) {
+  var tex = new Texture();
+
+  ctx.drawImage(img, 0, 0);
+
+  var imgData = ctx.getImageData( 0,0,img.width,img.height);
+  //Create ArrayBuffer backing
+  var buf = new ArrayBuffer( imgData.data.length );
+  //Get a uint8 view to the buffer
+  var buf8 = new Uint8ClampedArray( buf );
+  //Get a uint32 view to the buffer
+  var data = new Uint32Array( buf );
+
+  //Copy pixel data to buffer (via uint8 view. uint32 view is also updated)
+  buf8.set( imgData.data );
+
+  if( maskBlack )
+  {
+    for( var i = 0;i<data.length; ++i )
+    {
+      if( !(data[i] & 0x00FFFFFF) ) data[i] = 0x00000000;
     }
   }
-  return result;
-},
 
-imgToColorArray: function(img, ctx) {
-  ctx.drawImage(img, 0, 0);
-  return this.dataArrayToColorArray(ctx.getImageData(0, 0, img.width, img.height).data, img.width, img.height);
-},
-
-imgToTexture: function(img, ctx) {
-  var tex = new Texture();
-  tex.Pixels = this.imgToColorArray(img, ctx);
+  tex.ImageData = imgData;
+  tex.Pixels = data;
+  createImageBitmap( new ImageData(buf8, img.width, img.height ) ).then( function( bmp ) { tex.ImageBitmap = bmp; } );
   return tex;
 },
 
@@ -204,6 +214,7 @@ init: function(ctx) {
   // input processing
   window.onkeydown = this.handleKeydown;
   window.onkeyup   = this.handleKeyup;
+  ctx.imageSmoothingEnabled = false;
 
   // fps initialization
   fps.init();
@@ -235,10 +246,10 @@ init: function(ctx) {
     this.imgToTexture(document.getElementById('cobble_colored'), ctx),
 
     // Sprites
-    this.imgToTexture(document.getElementById('barrel'), ctx),
-    this.imgToTexture(document.getElementById('column'), ctx),
-    this.imgToTexture(document.getElementById('lamp2'), ctx),
-    this.imgToTexture(document.getElementById('troll'), ctx)
+    this.imgToTexture(document.getElementById('barrel'), ctx, true),
+    this.imgToTexture(document.getElementById('column'), ctx, true),
+    this.imgToTexture(document.getElementById('lamp2'), ctx, true),
+    this.imgToTexture(document.getElementById('troll'), ctx, true)
   ];
 
   // Sprites
@@ -286,8 +297,19 @@ clearBuffer: function() {
 },
 
 draw: function(ctx) {
+
+  if( useHWAccel ) {
+    ctx.fillStyle = "#404040";
+    ctx.fillRect( 0,0, Screen.Metrics.Width, Screen.Metrics.Height)
+  }
+  else {
+    this.clearBuffer();
+  }
   // geometry calculations
-  {
+  if( drawGeometry ) {
+    ctx.beginPath();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "rgba(0,0,0,0.6)"; //For overlaying the walls to create shadow
     for (var x = 0;x < Screen.Metrics.Width;++x) {
       var cameraX = 2.0 * x / Screen.Metrics.Width - 1; // x-coord in camera space
       var rayPosX = player.posX;
@@ -394,25 +416,51 @@ draw: function(ctx) {
         texX = World.Textures.Metrics.Width - texX - 1;
       }
 
-      var color = new Color(0x00000000);
-      for (var y = drawStart;y < drawEnd && drawGeometry;++y) {
-        var d = y * 256 - Screen.Metrics.Height * 128 + lineHeight * 128;
-        var texY = Math.floor(((d * World.Textures.Metrics.Height) / lineHeight) / 256);
-        var colorRGBA = World.Textures.Data[texNum].Pixels[World.Textures.Metrics.Height * texY + texX];
-        if (side) {
-          colorRGBA = ((colorRGBA >>> 1) & 0x7F7F7F7F) | (colorRGBA & 0x000000FF); // darken
-        }
-        color.setFromRGBA(colorRGBA);
-        var index = (y * Screen.Metrics.Width + x) * 4;
-        imgData.data[index++] = color.r;
-        imgData.data[index++] = color.g;
-        imgData.data[index++] = color.b;
-        imgData.data[index]   = color.a;
-      }
+      if( useHWAccel )
+      {
+        var textStart = 0;
+        var textEnd = World.Textures.Metrics.Height;
+        if( perpWallDist < 1 )
+        {
+          var vf = 1- Screen.Metrics.Height / lineHeight; 
+          var off = World.Textures.Metrics.Height * vf/2;
+          textStart += off;
+          textEnd   -= off;
+          //console.log( perpWallDist, textStart, textEnd );
 
+        }
+        ctx.drawImage( World.Textures.Data[texNum].ImageBitmap, 
+            /*src*/  texX, textStart, 1, textEnd - textStart,
+            /*dest*/ x,    drawStart, 1, drawEnd - drawStart );
+
+        if( side )
+        {
+          ctx.moveTo( x, drawStart );
+          ctx.lineTo( x, drawEnd );
+        }
+      }
+      else
+      {
+        var color = new Color(0x00000000);
+        for (var y = drawStart;y < drawEnd;++y) {
+          var d = y * 256 - Screen.Metrics.Height * 128 + lineHeight * 128;
+          var texY = Math.floor(((d * World.Textures.Metrics.Height) / lineHeight) / 256);
+          var colorABGR = World.Textures.Data[texNum].Pixels[World.Textures.Metrics.Height * texY + texX];
+          if (side) {
+            colorABGR = ((colorABGR >>> 1) & 0x7F7F7F7F) | (colorABGR & 0xFF000000); // darken
+          }
+          color.setFromABGR(colorABGR);
+          var index = (y * Screen.Metrics.Width + x) * 4;
+          imgData.data[index++] = color.r;
+          imgData.data[index++] = color.g;
+          imgData.data[index++] = color.b;
+          imgData.data[index]   = color.a;
+        }
+      }
       // save ZBuffer for sprites
       ZBuffer[x] = perpWallDist;
     }
+    ctx.stroke();
   } // Draw Gemoetry
 
   if (drawSprites) {
@@ -464,6 +512,7 @@ draw: function(ctx) {
       }
 
       // loop through every vertical stripe of sprite on screen
+      var color = new Color(0x00000000);
       for (var stripe = drawStartX;stripe < drawEndX;++stripe) {
         var texX = Math.floor((256 * (stripe - (-spriteWidth / 2 + spriteScreenX)) * World.Textures.Metrics.Width / spriteWidth) / 256);
         // the conditions in the if are:
@@ -472,25 +521,48 @@ draw: function(ctx) {
         // 3) it's on the screen (right)
         // 4) ZBuffer perpendicular distance
         if (transformY > 0 && stripe > 0 && stripe < Screen.Metrics.Width && transformY < ZBuffer[stripe]) {
-          for (var y = drawStartY;y < drawEndY;++y) {
-            var d    = Math.floor((y - vMoveScreen) * 256 - Screen.Metrics.Height * 128 + spriteHeight * 128);
-            var texY = Math.floor(((d * World.Textures.Metrics.Height) / spriteHeight) / 256);
-            var colorRGBA = World.Textures.Data[World.Sprites.Data[spriteOrder[i].Index].texture].Pixels[World.Textures.Metrics.Height * texY + texX];
-            if ((colorRGBA & 0xFFFFFF00) != 0) {
-              color.setFromRGBA(colorRGBA);
-              var index = (y * Screen.Metrics.Width + stripe) * 4;
-              imgData.data[index++] = color.r;
-              imgData.data[index++] = color.g;
-              imgData.data[index++] = color.b;
-              imgData.data[index]   = color.a;
+
+          if( useHWAccel)
+          {
+            var textStart = 0;
+            var textEnd = World.Textures.Metrics.Height;
+            if( transformY < 1 )
+            {
+              var vf = 1- Screen.Metrics.Height / spriteHeight; 
+              var off = World.Textures.Metrics.Height * vf/2;
+              textStart += off;
+              textEnd   -= off;
+              //console.log( perpWallDist, textStart, textEnd );
+
+            }
+            ctx.drawImage( World.Textures.Data[World.Sprites.Data[spriteOrder[i].Index].texture].ImageBitmap, 
+                /*src*/    texX,  textStart, 1, textEnd  - textStart,
+                /*dest*/ stripe, drawStartY, 1, drawEndY - drawStartY );
+          }
+          else
+          {
+            for (var y = drawStartY;y < drawEndY;++y) {
+              var d    = Math.floor((y - vMoveScreen) * 256 - Screen.Metrics.Height * 128 + spriteHeight * 128);
+              var texY = Math.floor(((d * World.Textures.Metrics.Height) / spriteHeight) / 256);
+              var colorABGR = World.Textures.Data[World.Sprites.Data[spriteOrder[i].Index].texture].Pixels[World.Textures.Metrics.Height * texY + texX];
+              color.setFromABGR(colorABGR);
+              if( color.a > 0 ) {
+                var index = (y * Screen.Metrics.Width + stripe) * 4;
+                imgData.data[index++] = color.r;
+                imgData.data[index++] = color.g;
+                imgData.data[index++] = color.b;
+                imgData.data[index]   = color.a;
+              }
             }
           }
         }
       }
     }
   }
-  ctx.putImageData(imgData, 0, 0);
-  this.clearBuffer();
+  if( !useHWAccel )
+  {
+    ctx.putImageData(imgData, 0, 0);
+  }
 
   // show fps
   if (showFPS) {
@@ -553,6 +625,10 @@ update: function() {
   if (keyPress[KeyID.X]) {
     // toggle sprites
     drawSprites = !drawSprites;
+  }
+  if (keyPress[KeyID.C]) {
+    // toggle hardware accel (ImageBuffer) 
+    useHWAccel = !useHWAccel;
   }
 
   // clear pressed keys
