@@ -1,9 +1,84 @@
-var c   = document.getElementById("myCanvas");
-var ctx = c.getContext("2d");
+window.addEventListener('load', function() {
+  var cvs      = document.getElementById('screen');
+  var graphics = cvs.getContext('2d');
+
+  // create game
+  var game = new Game();
+  game.init(graphics);
+
+  // create frame requester
+  var rqstFrame = window.requestAnimationFrame ||
+            window.webkitRequestAnimationFrame ||
+            window.mozRequestAnimationFrame    ||
+            window.oRequestAnimationFrame      ||
+            window.msRequestAnimationFrame     ||
+            null;
+
+  var processFrame = function() {
+    game.update();
+    game.draw(graphics);
+
+    rqstFrame(processFrame);
+  };
+
+  // start the whole shebang!
+  processFrame();
+});
+
+
+// Game assets
+var Metrics = function(w, h) {
+  this.Width  = w;
+  this.Height = h;
+};
 
 var Screen = {
-  Height: 480,
-  Width:  640
+  Metrics: new Metrics(640, 480)
+};
+
+var World = {
+  Map: {
+    Metrics: new Metrics(24,24),
+    Data:[
+      [ 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 4, 4, 6, 4, 4, 6, 4, 6, 4, 4, 4, 6, 4 ],
+      [ 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4 ],
+      [ 8, 0, 3, 3, 0, 0, 0, 0, 0, 8, 8, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6 ],
+      [ 8, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6 ],
+      [ 8, 0, 3, 3, 0, 0, 0, 0, 0, 8, 8, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4 ],
+      [ 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 4, 0, 0, 0, 0, 0, 6, 6, 6, 0, 6, 4, 6 ],
+      [ 8, 8, 8, 8, 0, 8, 8, 8, 8, 8, 8, 4, 4, 4, 4, 4, 4, 6, 0, 0, 0, 0, 0, 6 ],
+      [ 7, 7, 7, 7, 0, 7, 7, 7, 7, 0, 8, 0, 8, 0, 8, 0, 8, 4, 0, 4, 0, 6, 0, 6 ],
+      [ 7, 7, 0, 0, 0, 0, 0, 0, 7, 8, 0, 8, 0, 8, 0, 8, 8, 6, 0, 0, 0, 0, 0, 6 ],
+      [ 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 6, 0, 0, 0, 0, 0, 4 ],
+      [ 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 6, 0, 6, 0, 6, 0, 6 ],
+      [ 7, 7, 0, 0, 0, 0, 0, 0, 7, 8, 0, 8, 0, 8, 0, 8, 8, 6, 4, 6, 0, 6, 6, 6 ],
+      [ 7, 7, 7, 7, 0, 7, 7, 7, 7, 8, 8, 4, 0, 6, 8, 4, 8, 3, 3, 3, 0, 3, 3, 3 ],
+      [ 2, 2, 2, 2, 0, 2, 2, 2, 2, 4, 6, 4, 0, 0, 6, 0, 6, 3, 0, 0, 0, 0, 0, 3 ],
+      [ 2, 2, 0, 0, 0, 0, 0, 2, 2, 4, 0, 0, 0, 0, 0, 0, 4, 3, 0, 0, 0, 0, 0, 3 ],
+      [ 2, 0, 0, 0, 0, 0, 0, 0, 2, 4, 0, 0, 0, 0, 0, 0, 4, 3, 0, 0, 0, 0, 0, 3 ],
+      [ 1, 0, 0, 0, 0, 0, 0, 0, 1, 4, 4, 4, 4, 4, 6, 0, 6, 3, 3, 0, 0, 0, 3, 3 ],
+      [ 2, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 1, 2, 2, 2, 6, 6, 0, 0, 5, 0, 5, 0, 5 ],
+      [ 2, 2, 0, 0, 0, 0, 0, 2, 2, 2, 0, 0, 0, 2, 2, 0, 5, 0, 5, 0, 0, 0, 5, 5 ],
+      [ 2, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 2, 5, 0, 5, 0, 5, 0, 5, 0, 5 ],
+      [ 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5 ],
+      [ 2, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 2, 5, 0, 5, 0, 5, 0, 5, 0, 5 ],
+      [ 2, 2, 0, 0, 0, 0, 0, 2, 2, 2, 0, 0, 0, 2, 2, 0, 5, 0, 5, 0, 0, 0, 5, 5 ],
+      [ 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 5, 5, 5, 5, 5, 5, 5, 5, 5 ]]
+  },
+  Textures: {
+    Metrics: new Metrics(64, 64),
+    Data: []
+  },
+  Sprites: {
+    Metrics: new Metrics(64, 64),
+    Data: []
+  }
+};
+
+var Texture = function() {
+  this.Pixels = [];
+
+  this.Pixels[World.Textures.Metrics.Height * World.Textures.Metrics.Width - 1] = undefined;
 };
 
 var Sprite = function(x, y, tex) {
@@ -12,79 +87,17 @@ var Sprite = function(x, y, tex) {
   this.texture = tex;
 };
 
-var World = {
-  Height: 24,
-  Width: 24,
-  Textures: { Height:64, Width:64 },
-  Map:[
-  [ 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 4, 4, 6, 4, 4, 6, 4, 6, 4, 4, 4, 6, 4 ],
-  [ 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4 ],
-  [ 8, 0, 3, 3, 0, 0, 0, 0, 0, 8, 8, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6 ],
-  [ 8, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6 ],
-  [ 8, 0, 3, 3, 0, 0, 0, 0, 0, 8, 8, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4 ],
-  [ 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 4, 0, 0, 0, 0, 0, 6, 6, 6, 0, 6, 4, 6 ],
-  [ 8, 8, 8, 8, 0, 8, 8, 8, 8, 8, 8, 4, 4, 4, 4, 4, 4, 6, 0, 0, 0, 0, 0, 6 ],
-  [ 7, 7, 7, 7, 0, 7, 7, 7, 7, 0, 8, 0, 8, 0, 8, 0, 8, 4, 0, 4, 0, 6, 0, 6 ],
-  [ 7, 7, 0, 0, 0, 0, 0, 0, 7, 8, 0, 8, 0, 8, 0, 8, 8, 6, 0, 0, 0, 0, 0, 6 ],
-  [ 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 6, 0, 0, 0, 0, 0, 4 ],
-  [ 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 6, 0, 6, 0, 6, 0, 6 ],
-  [ 7, 7, 0, 0, 0, 0, 0, 0, 7, 8, 0, 8, 0, 8, 0, 8, 8, 6, 4, 6, 0, 6, 6, 6 ],
-  [ 7, 7, 7, 7, 0, 7, 7, 7, 7, 8, 8, 4, 0, 6, 8, 4, 8, 3, 3, 3, 0, 3, 3, 3 ],
-  [ 2, 2, 2, 2, 0, 2, 2, 2, 2, 4, 6, 4, 0, 0, 6, 0, 6, 3, 0, 0, 0, 0, 0, 3 ],
-  [ 2, 2, 0, 0, 0, 0, 0, 2, 2, 4, 0, 0, 0, 0, 0, 0, 4, 3, 0, 0, 0, 0, 0, 3 ],
-  [ 2, 0, 0, 0, 0, 0, 0, 0, 2, 4, 0, 0, 0, 0, 0, 0, 4, 3, 0, 0, 0, 0, 0, 3 ],
-  [ 1, 0, 0, 0, 0, 0, 0, 0, 1, 4, 4, 4, 4, 4, 6, 0, 6, 3, 3, 0, 0, 0, 3, 3 ],
-  [ 2, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 1, 2, 2, 2, 6, 6, 0, 0, 5, 0, 5, 0, 5 ],
-  [ 2, 2, 0, 0, 0, 0, 0, 2, 2, 2, 0, 0, 0, 2, 2, 0, 5, 0, 5, 0, 0, 0, 5, 5 ],
-  [ 2, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 2, 5, 0, 5, 0, 5, 0, 5, 0, 5 ],
-  [ 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5 ],
-  [ 2, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 2, 5, 0, 5, 0, 5, 0, 5, 0, 5 ],
-  [ 2, 2, 0, 0, 0, 0, 0, 2, 2, 2, 0, 0, 0, 2, 2, 0, 5, 0, 5, 0, 0, 0, 5, 5 ],
-  [ 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 5, 5, 5, 5, 5, 5, 5, 5, 5 ]],
-  Sprites: [
-  new Sprite(20.5, 11.5, 10), //green light in front of playerstart
-  //green lights in every room
-  new Sprite(18.5, 4.5, 10),
-  new Sprite(10.0, 4.5, 10),
-  new Sprite(10.0, 12.5, 10),
-  new Sprite(3.5, 6.5, 10),
-  new Sprite(3.5, 20.5, 10),
-  new Sprite(3.5, 14.5, 10),
-  new Sprite(14.5, 20.5, 10),
-
-  //row of pillars in front of wall: fisheye test
-  new Sprite(18.5, 10.5, 9),
-  new Sprite(18.5, 11.5, 9),
-  new Sprite(18.5, 12.5, 9),
-
-  //some barrels around the map
-  new Sprite(21.5, 1.5, 8),
-  new Sprite(15.5, 1.5, 8),
-  new Sprite(16.0, 1.8, 8),
-  new Sprite(16.2, 1.2, 8),
-  new Sprite(9.5, 15.5, 8),
-  new Sprite(10.0, 15.1, 8),
-  new Sprite(10.5, 15.8, 8),
-
-  // lol
-  new Sprite(3.5, 2.5, 11)
-  ]
+var Color = function(colorRGBA) {
+  this.setFromRGBA(colorRGBA);
 };
-
-var Texture = function() {
-  this.Pixels = [];
-
-  this.Pixels[World.Textures.Height * World.Textures.Width - 1] = undefined;
+Color.prototype.setFromRGBA = function(colorRGBA) {
+  this.r = (colorRGBA >>> 24); // we need to shift this as a signed num
+  this.g = ((colorRGBA >> 16) & 0x00FF);
+  this.b = ((colorRGBA >> 8) & 0x0000FF);
+  this.a = (colorRGBA & 0x000000FF);
 };
-
-var Color = function(colorRGB) {
-  this.setFromRGB(colorRGB);
-};
-Color.prototype.setFromRGB = function(colorRGB) {
-  this.r = (colorRGB >> 16);
-  this.g = ((colorRGB >> 8) & 0x00FF);
-  this.b = (colorRGB & 0x0000FF);
-  this.a = 0xFF;
+Color.prototype.toRGBA = function() {
+  return (this.r << 24) | (this.g << 16) | (this.b << 8) | (this.a);
 };
 
 var Player = function() {
@@ -100,107 +113,182 @@ var Player = function() {
   this.planeX = 0.0;
   this.planeY = 0.66;
 };
-var player = new Player();
 
-var fps = {
-  initTime: 0,
-  startTime: 0,
-  frameTime: 0,
-  font:"bold 10px Arial",
-  initFPS: function() {
-    this.initTime = new Date().getTime();
-  },
-  getTicks: function() {
-    return new Date().getTime() - this.initTime;
-  },
-  getFPS: function(){
-    var oldTime    = this.startTime;
-    this.startTime = fps.getTicks();
-    this.frameTime = (this.startTime - oldTime) / 1000.0;
+var FPSCounter = function() {
+  var initTime  = 0;
+  var startTime = 0;
+  var font = "bold 10px Arial";
 
-    return 1.0 / this.frameTime;
-  },
-  renderFPS: function(ctx) {
-    ctx.font      = fps.font;
-    ctx.fillStyle = "yellow";
-    ctx.fillText(fps.getFPS().toFixed(0),10,10);
-  }
+  return {
+    frameTime: 0,
+    init: function() {
+      initTime = new Date().getTime();
+    },
+    getTicks: function() {
+      return new Date().getTime() - initTime;
+    },
+    getFPS: function(){
+      var oldTime    = startTime;
+      startTime = this.getTicks();
+      this.frameTime = (startTime - oldTime) / 1000.0;
+
+      return 1.0 / this.frameTime;
+    },
+    renderFPS: function(ctx) {
+      ctx.font      = font;
+      ctx.fillStyle = "yellow";
+      ctx.fillText(this.getFPS().toFixed(0),10,10);
+    }
+  };
 };
 
 // main draw
-var imgData;
-var ZBuffer  = [];
-var textures = [];
+var Game = function() {
+  // drawing
+  var imgData;
+  var ZBuffer  = [];
 
-var dataArrayToColorArray = function(data, width, height) {
+  // input
+  var keyDown  = [];
+  var keyPress = [];
+  var KeyID = {
+    // movement
+    W: 87,
+    A: 65,
+    S: 83,
+    D: 68,
+
+    // special keys
+    T: 84,
+    Z: 90,
+    X: 88
+  };
+
+  // logic
+  var fps = new FPSCounter();
+
+  // game
+  var player       = new Player();
+  var drawSprites  = true;
+  var drawGeometry = true;
+  var showFPS      = true;
+
+  return {
+
+// Game functions
+dataArrayToColorArray: function(data, width, height) {
   var result = [];
   result[width * height - 1] = undefined;
   for (var y = 0;y < height;++y) {
     for (var x = 0;x < width;++x) {
       var index = (y * height + x) * 4;
-      result[y * height + x] = /*r = */ (data[index] << 16) | /* g = */ (data[index + 1] << 8) | /* b = */ (data[index + 2]);
+      result[y * height + x] = /* r = */ (data[index] << 24) | /* g = */ (data[index + 1] << 16) | /* b = */ (data[index + 2] << 8) | /* a = */ (data[index + 3]);
     }
   }
   return result;
-};
+},
 
-var imgToColorArray = function(img) {
+imgToColorArray: function(img, ctx) {
   ctx.drawImage(img, 0, 0);
-  return dataArrayToColorArray(ctx.getImageData(0, 0, img.width, img.height).data, img.width, img.height);
-};
+  return this.dataArrayToColorArray(ctx.getImageData(0, 0, img.width, img.height).data, img.width, img.height);
+},
 
-var initDraw = function() {
-  fps.initFPS();
-  imgData = ctx.getImageData(0, 0, Screen.Width, Screen.Height);
+imgToTexture: function(img, ctx) {
+  var tex = new Texture();
+  tex.Pixels = this.imgToColorArray(img, ctx);
+  return tex;
+},
 
-  // ZBuffer
-  ZBuffer[Screen.Width - 1] = undefined;
+init: function(ctx) {
+  // input processing
+  window.onkeydown = this.handleKeydown;
+  window.onkeyup   = this.handleKeyup;
+
+  // fps initialization
+  fps.init();
+
+  // buffer initialization
+  imgData = ctx.getImageData(0, 0, Screen.Metrics.Width, Screen.Metrics.Height);
+  ZBuffer[Screen.Metrics.Width - 1] = undefined;
 
   // create textures
-  for (var t = 0;t != 12;++t) textures[t] = new Texture();
   /* uncomment for generated textures
-  for (var x = 0;x < World.Textures.Width;++x) {
-    for (var y = 0;y < World.Textures.Height;++y) {
-      for (var t = 0;t != 8;++t) {
-        textures[t].Pixels[World.Textures.Width * y + x] = 0xC00000 * ((x % 16) && (y % 16) && 1);
+  for (var x = 0;x < World.Textures.Metrics.Width;++x) {
+    for (var y = 0;y < World.Textures.Metrics.Height;++y) {
+      for (var t = 0;t != 12;++t) {
+        World.Textures.Data[t].Pixels[World.Textures.Metrics.Width * y + x] = 0xC00000 * ((x % 16) && (y % 16) && 1);
       }
     }
   }
   */
 
-  textures[0].Pixels = imgToColorArray(document.getElementById('eagle'));
-  textures[1].Pixels = imgToColorArray(document.getElementById('brick'));
-  textures[2].Pixels = imgToColorArray(document.getElementById('purple_stone'));
-  textures[3].Pixels = imgToColorArray(document.getElementById('cobble'));
-  textures[4].Pixels = imgToColorArray(document.getElementById('bluebrick'));
-  textures[5].Pixels = imgToColorArray(document.getElementById('cobble_moss'));
-  textures[6].Pixels = imgToColorArray(document.getElementById('wood'));
-  textures[7].Pixels = imgToColorArray(document.getElementById('cobble_colored'));
+  World.Textures.Data = [
+    // Walls
+    this.imgToTexture(document.getElementById('eagle'), ctx),
+    this.imgToTexture(document.getElementById('brick'), ctx),
+    this.imgToTexture(document.getElementById('purple_stone'), ctx),
+    this.imgToTexture(document.getElementById('cobble'), ctx),
+    this.imgToTexture(document.getElementById('bluebrick'), ctx),
+    this.imgToTexture(document.getElementById('cobble_moss'), ctx),
+    this.imgToTexture(document.getElementById('wood'), ctx),
+    this.imgToTexture(document.getElementById('cobble_colored'), ctx),
 
-  textures[8].Pixels  = imgToColorArray(document.getElementById('barrel'));
-  textures[9].Pixels  = imgToColorArray(document.getElementById('column'));
-  textures[10].Pixels = imgToColorArray(document.getElementById('lamp2'));
-  textures[11].Pixels = imgToColorArray(document.getElementById('troll'));
-};
+    // Sprites
+    this.imgToTexture(document.getElementById('barrel'), ctx),
+    this.imgToTexture(document.getElementById('column'), ctx),
+    this.imgToTexture(document.getElementById('lamp2'), ctx),
+    this.imgToTexture(document.getElementById('troll'), ctx)
+  ];
 
-var clearBuffer = function() {
-  var black = new Color(0x000000);
-  for (var x = 0;x < Screen.Width;++x) {
-    for (var y = 0;y < Screen.Height;++y) {
-      var index = (y * Screen.Width + x) * 4;
+  // Sprites
+  World.Sprites.Data = [
+    new Sprite(20.5, 11.5, 10), //green light in front of playerstart
+    //green lights in every room
+    new Sprite(18.5, 4.5, 10),
+    new Sprite(10.0, 4.5, 10),
+    new Sprite(10.0, 12.5, 10),
+    new Sprite(3.5, 6.5, 10),
+    new Sprite(3.5, 20.5, 10),
+    new Sprite(3.5, 14.5, 10),
+    new Sprite(14.5, 20.5, 10),
+
+    //row of pillars in front of wall: fisheye test
+    new Sprite(18.5, 10.5, 9),
+    new Sprite(18.5, 11.5, 9),
+    new Sprite(18.5, 12.5, 9),
+
+    //some barrels around the map
+    new Sprite(21.5, 1.5, 8),
+    new Sprite(15.5, 1.5, 8),
+    new Sprite(16.0, 1.8, 8),
+    new Sprite(16.2, 1.2, 8),
+    new Sprite(9.5, 15.5, 8),
+    new Sprite(10.0, 15.1, 8),
+    new Sprite(10.5, 15.8, 8),
+
+    // lol
+    new Sprite(3.5, 2.5, 11)
+  ];
+},
+
+clearBuffer: function() {
+  var black = new Color(0x00000000);
+  for (var x = 0;x < Screen.Metrics.Width;++x) {
+    for (var y = 0;y < Screen.Metrics.Height;++y) {
+      var index = (y * Screen.Metrics.Width + x) * 4;
       imgData.data[index++] = black.r;
       imgData.data[index++] = black.g;
       imgData.data[index++] = black.b;
-      imgData.data[index] = 0xC0;
+      imgData.data[index] = 0xC0; // give it that gray color
     }
   }
-};
+},
 
-var draw = function() {
-  //if (false) // uncomment if only testing FPS of recursive canvas calls
+draw: function(ctx) {
+  // geometry calculations
   {
-    for (var x = 0;x < Screen.Width;++x) {
-      var cameraX = 2.0 * x / Screen.Width - 1; // x-coord in camera space
+    for (var x = 0;x < Screen.Metrics.Width;++x) {
+      var cameraX = 2.0 * x / Screen.Metrics.Width - 1; // x-coord in camera space
       var rayPosX = player.posX;
       var rayPosY = player.posY;
       var rayDirX = player.dirX + player.planeX * cameraX;
@@ -259,7 +347,7 @@ var draw = function() {
           side      = true;
         }
         // check if ray has hit a wall
-        hit = World.Map[mapX][mapY] > 0;
+        hit = World.Map.Data[mapX][mapY] > 0;
       }
 
       // calculate lowest and highest pixel to fill in current stripe
@@ -271,20 +359,20 @@ var draw = function() {
       }
 
       // calculate line height of line to draw on screen
-      var lineHeight = Math.floor(Screen.Height / perpWallDist);
+      var lineHeight = Math.floor(Screen.Metrics.Height / perpWallDist);
 
       // calculate lowest and highest pixel to fill in current stripe
-      var drawStart = Math.floor(-lineHeight / 2 + Screen.Height / 2);
+      var drawStart = -Math.floor(lineHeight / 2) + Math.floor(Screen.Metrics.Height / 2);
       if (drawStart < 0) {
         drawStart = 0;
       }
-      var drawEnd = lineHeight / 2 + Screen.Height / 2;
-      if (drawEnd >= Screen.Height) {
-        drawEnd = Screen.Height - 1;
+      var drawEnd = Math.floor(lineHeight / 2) + Math.floor(Screen.Metrics.Height / 2);
+      if (drawEnd >= Screen.Metrics.Height) {
+        drawEnd = Screen.Metrics.Height - 1;
       }
 
       // texturing calculations
-      var texNum = World.Map[mapX][mapY] - 1;
+      var texNum = World.Map.Data[mapX][mapY] - 1;
 
       // calculate value of wallX
       var wallX; // where exactly the wall was hit
@@ -297,24 +385,24 @@ var draw = function() {
       wallX -= Math.floor(wallX);
 
       // x coordinate on texture
-      var texX = Math.floor(wallX * World.Textures.Width);
+      var texX = Math.floor(wallX * World.Textures.Metrics.Width);
       if (!side && rayDirX > 0) {
-        texX = World.Textures.Width - texX - 1;
+        texX = World.Textures.Metrics.Width - texX - 1;
       }
       if (side && rayDirY < 0) {
-        texX = World.Textures.Width - texX - 1;
+        texX = World.Textures.Metrics.Width - texX - 1;
       }
 
-      var color = new Color(0x000000);
-      for (var y = drawStart;y < drawEnd;++y) {
-        var d = y * 256 - Screen.Height * 128 + lineHeight * 128;
-        var texY = Math.floor(((d * World.Textures.Height) / lineHeight) / 256);
-        var colorRGB = textures[texNum].Pixels[World.Textures.Height * texY + texX];
+      var color = new Color(0x00000000);
+      for (var y = drawStart;y < drawEnd && drawGeometry;++y) {
+        var d = y * 256 - Screen.Metrics.Height * 128 + lineHeight * 128;
+        var texY = Math.floor(((d * World.Textures.Metrics.Height) / lineHeight) / 256);
+        var colorRGBA = World.Textures.Data[texNum].Pixels[World.Textures.Metrics.Height * texY + texX];
         if (side) {
-          colorRGB = (colorRGB >> 1) & 0x7F7F7F; // darken
+          colorRGBA = ((colorRGBA >>> 1) & 0x7F7F7F7F) | (colorRGBA & 0x000000FF); // darken
         }
-        color.setFromRGB(colorRGB);
-        var index = (y * Screen.Width + x) * 4;
+        color.setFromRGBA(colorRGBA);
+        var index = (y * Screen.Metrics.Width + x) * 4;
         imgData.data[index++] = color.r;
         imgData.data[index++] = color.g;
         imgData.data[index++] = color.b;
@@ -324,17 +412,19 @@ var draw = function() {
       // save ZBuffer for sprites
       ZBuffer[x] = perpWallDist;
     }
+  } // Draw Gemoetry
 
+  if (drawSprites) {
     var spriteOrder = [];
-    for (var i = 0;i != World.Sprites.length;++i) {
-      spriteOrder[i] = { Index: i, Distance: ((player.posX - World.Sprites[i].x) * (player.posX - World.Sprites[i].x) + (player.posY - World.Sprites[i].y) * (player.posY - World.Sprites[i].y)) }; // sqrt not taken, unnecessary
+    for (var i = 0;i != World.Sprites.Data.length;++i) {
+      spriteOrder[i] = { Index: i, Distance: ((player.posX - World.Sprites.Data[i].x) * (player.posX - World.Sprites.Data[i].x) + (player.posY - World.Sprites.Data[i].y) * (player.posY - World.Sprites.Data[i].y)) }; // sqrt not taken, unnecessary
     }
     spriteOrder.sort(function(a, b) { return b.Distance - a.Distance; });
 
-    for (var i = 0;i != World.Sprites.length;++i) {
+    for (var i = 0;i != World.Sprites.Data.length;++i) {
       // translate sprite position relative to camera
-      var spriteX = World.Sprites[spriteOrder[i].Index].x - player.posX;
-      var spriteY = World.Sprites[spriteOrder[i].Index].y - player.posY;
+      var spriteX = World.Sprites.Data[spriteOrder[i].Index].x - player.posX;
+      var spriteY = World.Sprites.Data[spriteOrder[i].Index].y - player.posY;
 
       //transform sprite with the inverse camera matrix
       // [ planeX   dirX ] -1                                       [ dirY      -dirX ]
@@ -345,49 +435,49 @@ var draw = function() {
       var transformX = invDet * (player.dirY * spriteX - player.dirX * spriteY);
       var transformY = invDet * (-player.planeY * spriteX + player.planeX * spriteY);
 
-      var spriteScreenX = Math.floor((Screen.Width / 2) * (1 + transformX / transformY));
+      var spriteScreenX = Math.floor((Screen.Metrics.Width / 2) * (1 + transformX / transformY));
 
       var vMoveScreen = Math.floor(0.0 / transformY);
 
       // calculate height of sprite on screen
-      var spriteHeight = Math.abs(Math.floor(Screen.Height / transformY)) / 1;
+      var spriteHeight = Math.abs(Math.floor(Screen.Metrics.Height / transformY)) / 1;
       // calculate lowest and highest pixel to fill current stripe
-      var drawStartY = Math.floor(-Math.floor(spriteHeight / 2) + Screen.Height / 2 + vMoveScreen);
+      var drawStartY = Math.floor(-Math.floor(spriteHeight / 2) + Screen.Metrics.Height / 2 + vMoveScreen);
       if (drawStartY < 0) {
         drawStartY = 0;
       }
-      var drawEndY = Math.floor(spriteHeight / 2 + Screen.Height / 2 + vMoveScreen);
-      if (drawEndY >= Screen.Height) {
-        drawEndY = Screen.Height - 1;
+      var drawEndY = Math.floor(spriteHeight / 2 + Screen.Metrics.Height / 2 + vMoveScreen);
+      if (drawEndY >= Screen.Metrics.Height) {
+        drawEndY = Screen.Metrics.Height - 1;
       }
 
       // calculate width of the sprite
-      var spriteWidth = Math.abs(Math.floor(Screen.Height / transformY)) / 1;
+      var spriteWidth = Math.abs(Math.floor(Screen.Metrics.Height / transformY)) / 1;
       var drawStartX = -Math.floor(spriteWidth / 2) + spriteScreenX;
       if (drawStartX < 0) {
         drawStartX = 0;
       }
       var drawEndX = Math.floor(spriteWidth / 2 + spriteScreenX);
-      if (drawStartX >= Screen.Width) {
-        drawEndX = Screen.Width - 1;
+      if (drawStartX >= Screen.Metrics.Width) {
+        drawEndX = Screen.Metrics.Width - 1;
       }
 
       // loop through every vertical stripe of sprite on screen
       for (var stripe = drawStartX;stripe < drawEndX;++stripe) {
-        var texX = Math.floor((256 * (stripe - (-spriteWidth / 2 + spriteScreenX)) * World.Textures.Width / spriteWidth) / 256);
+        var texX = Math.floor((256 * (stripe - (-spriteWidth / 2 + spriteScreenX)) * World.Textures.Metrics.Width / spriteWidth) / 256);
         // the conditions in the if are:
         // 1) it's in front of the camera plane so you don't see things behind you
         // 2) it's on the screen (left)
         // 3) it's on the screen (right)
         // 4) ZBuffer perpendicular distance
-        if (transformY > 0 && stripe > 0 && stripe < Screen.Width && transformY < ZBuffer[stripe]) {
+        if (transformY > 0 && stripe > 0 && stripe < Screen.Metrics.Width && transformY < ZBuffer[stripe]) {
           for (var y = drawStartY;y < drawEndY;++y) {
-            var d    = Math.floor((y - vMoveScreen) * 256 - Screen.Height * 128 + spriteHeight * 128);
-            var texY = Math.floor(((d * World.Textures.Height) / spriteHeight) / 256);
-            var colorRGB = textures[World.Sprites[spriteOrder[i].Index].texture].Pixels[World.Textures.Height * texY + texX];
-            if ((colorRGB & 0xFFFFFFFF) != 0) {
-              color.setFromRGB(colorRGB);
-              var index = (y * Screen.Width + stripe) * 4;
+            var d    = Math.floor((y - vMoveScreen) * 256 - Screen.Metrics.Height * 128 + spriteHeight * 128);
+            var texY = Math.floor(((d * World.Textures.Metrics.Height) / spriteHeight) / 256);
+            var colorRGBA = World.Textures.Data[World.Sprites.Data[spriteOrder[i].Index].texture].Pixels[World.Textures.Metrics.Height * texY + texX];
+            if ((colorRGBA & 0xFFFFFF00) != 0) {
+              color.setFromRGBA(colorRGBA);
+              var index = (y * Screen.Metrics.Width + stripe) * 4;
               imgData.data[index++] = color.r;
               imgData.data[index++] = color.g;
               imgData.data[index++] = color.b;
@@ -397,42 +487,39 @@ var draw = function() {
         }
       }
     }
-    ctx.putImageData(imgData, 0, 0);
-    clearBuffer();
   }
-  fps.renderFPS(ctx);
-};
+  ctx.putImageData(imgData, 0, 0);
+  this.clearBuffer();
 
-var keys = [];
-var KeyID = {
-  W: 87,
-  A: 65,
-  S: 83,
-  D: 68
-};
-var update = function() {
+  // show fps
+  if (showFPS) {
+    fps.renderFPS(ctx);
+  }
+},
+
+update: function() {
   var moveSpeed = fps.frameTime * 5.0;
   var rotSpeed  = fps.frameTime * 3.0;
 
-  if (keys[KeyID.W]) {
+  if (keyDown[KeyID.W]) {
     console.log('moving forward!');
-    if (World.Map[Math.floor(player.posX + player.dirX * moveSpeed)][Math.floor(player.posY)] == 0) {
+    if (World.Map.Data[Math.floor(player.posX + player.dirX * moveSpeed)][Math.floor(player.posY)] == 0) {
       player.posX += player.dirX * moveSpeed;
     }
-    if (World.Map[Math.floor(player.posX)][Math.floor(player.posY + player.dirY * moveSpeed)] == 0) {
+    if (World.Map.Data[Math.floor(player.posX)][Math.floor(player.posY + player.dirY * moveSpeed)] == 0) {
       player.posY += player.dirY * moveSpeed;
     }
   }
-  else if (keys[KeyID.S]) {
+  else if (keyDown[KeyID.S]) {
     console.log('moving back!');
-    if (!World.Map[Math.floor(player.posX - player.dirX * moveSpeed)][Math.floor(player.posY)]) {
+    if (!World.Map.Data[Math.floor(player.posX - player.dirX * moveSpeed)][Math.floor(player.posY)]) {
       player.posX -= player.dirX * moveSpeed;
     }
-    if (!World.Map[Math.floor(player.posX)][Math.floor(player.posY - player.dirY * moveSpeed)]) {
+    if (!World.Map.Data[Math.floor(player.posX)][Math.floor(player.posY - player.dirY * moveSpeed)]) {
       player.posY -= player.dirY * moveSpeed;
     }
   }
-  if (keys[KeyID.A]) {
+  if (keyDown[KeyID.A]) {
     console.log('turning left!');
     var oldDirX = player.dirX;
     player.dirX = player.dirX * Math.cos(rotSpeed) - player.dirY * Math.sin(rotSpeed);
@@ -441,7 +528,7 @@ var update = function() {
     player.planeX = player.planeX * Math.cos(rotSpeed) - player.planeY * Math.sin(rotSpeed);
     player.planeY = oldPlaneX * Math.sin(rotSpeed) + player.planeY * Math.cos(rotSpeed);
   }
-  else if (keys[KeyID.D]) {
+  else if (keyDown[KeyID.D]) {
     console.log('turning right!');
     var oldDirX = player.dirX;
     player.dirX = player.dirX * Math.cos(-rotSpeed) - player.dirY * Math.sin(-rotSpeed);
@@ -450,34 +537,34 @@ var update = function() {
     player.planeX = player.planeX * Math.cos(-rotSpeed) - player.planeY * Math.sin(-rotSpeed);
     player.planeY = oldPlaneX * Math.sin(-rotSpeed) + player.planeY * Math.cos(-rotSpeed);
   }
-};
 
-var mainLoop = function() {
-  update();
-  draw();
-};
+  // special keys
+  if (keyPress[KeyID.T]) {
+    // toggle FPS
+    showFPS = !showFPS;
+  }
+  if (keyPress[KeyID.Z]) {
+    // toggle geometry drawing
+    drawGeometry = !drawGeometry;
+  }
+  if (keyPress[KeyID.X]) {
+    // toggle sprites
+    drawSprites = !drawSprites;
+  }
 
-var handleKeydown = function(e) {
-  keys[e.keyCode] = true;
-};
+  // clear pressed keys
+  keyPress = [];
+},
 
-var handleKeyup = function(e) {
-  keys[e.keyCode] = false;
-};
+handleKeydown: function(e) {
+  keyDown[e.keyCode] = true;
+},
 
-var animFrame = window.requestAnimationFrame   ||
-            window.webkitRequestAnimationFrame ||
-            window.mozRequestAnimationFrame    ||
-            window.oRequestAnimationFrame      ||
-            window.msRequestAnimationFrame     ||
-            null;
+handleKeyup: function(e) {
+  keyPress[e.keyCode] = true;
+  keyDown[e.keyCode] = false;
+}
 
-var recursiveAnim = function() {
-  mainLoop();
-  animFrame(recursiveAnim);
-};
+}; // return Game (functions)
 
-window.onkeydown = handleKeydown;
-window.onkeyup   = handleKeyup;
-initDraw();
-animFrame( recursiveAnim );
+}; // Game
