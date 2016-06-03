@@ -1,3 +1,5 @@
+// vim: sts=2:sw=2:sw=2
+
 window.addEventListener('load', function() {
   var cvs      = document.getElementById('screen');
   var graphics = cvs.getContext('2d');
@@ -164,7 +166,7 @@ var Game = function() {
     T: 84,
     Z: 90,
     X: 88,
-  C: 67
+    C: 67
   };
 
   // logic
@@ -647,3 +649,4 @@ handleKeyup: function(e) {
 }; // return Game (functions)
 
 }; // Game
+
