@@ -127,11 +127,12 @@ var FPSCounter = function() {
     getTicks: function() {
       return new Date().getTime() - initTime;
     },
-    getFPS: function(){
+    update: function() {
       var oldTime    = startTime;
-      startTime = this.getTicks();
+      startTime      = this.getTicks();
       this.frameTime = (startTime - oldTime) / 1000.0;
-
+    },
+    getFPS: function(){
       return 1.0 / this.frameTime;
     },
     renderFPS: function(ctx) {
@@ -442,11 +443,11 @@ draw: function(ctx) {
       // calculate height of sprite on screen
       var spriteHeight = Math.abs(Math.floor(Screen.Metrics.Height / transformY)) / 1;
       // calculate lowest and highest pixel to fill current stripe
-      var drawStartY = Math.floor(-Math.floor(spriteHeight / 2) + Screen.Metrics.Height / 2 + vMoveScreen);
+      var drawStartY = -Math.floor(spriteHeight / 2) + Math.floor(Screen.Metrics.Height / 2) + vMoveScreen;
       if (drawStartY < 0) {
         drawStartY = 0;
       }
-      var drawEndY = Math.floor(spriteHeight / 2 + Screen.Metrics.Height / 2 + vMoveScreen);
+      var drawEndY = Math.floor(spriteHeight / 2) + Math.floor(Screen.Metrics.Height / 2) + vMoveScreen;
       if (drawEndY >= Screen.Metrics.Height) {
         drawEndY = Screen.Metrics.Height - 1;
       }
@@ -457,8 +458,8 @@ draw: function(ctx) {
       if (drawStartX < 0) {
         drawStartX = 0;
       }
-      var drawEndX = Math.floor(spriteWidth / 2 + spriteScreenX);
-      if (drawStartX >= Screen.Metrics.Width) {
+      var drawEndX = Math.floor(spriteWidth / 2) + spriteScreenX;
+      if (drawEndX >= Screen.Metrics.Width) {
         drawEndX = Screen.Metrics.Width - 1;
       }
 
@@ -498,6 +499,8 @@ draw: function(ctx) {
 },
 
 update: function() {
+  fps.update();
+
   var moveSpeed = fps.frameTime * 5.0;
   var rotSpeed  = fps.frameTime * 3.0;
 
